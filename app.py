@@ -188,7 +188,7 @@ st.markdown("""
 # Centered horizontal model switcher
 model_choice = st.radio(
     "Choose prediction model:",
-    ["ML Model (SVM)", "Deep Learning Model (BiRNN + GloVe)"],
+    ["ML Model (SVM)", "Deep Learning Model (RNN)"],
     index=0,
     horizontal=True,
     label_visibility="collapsed"

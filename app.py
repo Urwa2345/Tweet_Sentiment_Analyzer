@@ -146,11 +146,18 @@ def load_artifacts():
         tokenizer = pickle.load(f)
     with open("config.json", "r") as f:
         config = json.load(f)
-    return tfidf, svm_model, label_encoder, rnn_model, tokenizer, config
+    lstm_model = load_model("lstm_model.h5", compile=False)
+    gru_model = load_model("gru_model.h5", compile=False)
+    with open("tokenizer_dl.pkl", "rb") as f:
+        tokenizer_dl = pickle.load(f)
+    with open("config_dl.json", "r") as f:
+        config_dl = json.load(f)
+    return (tfidf, svm_model, label_encoder, rnn_model, tokenizer, config,
+            lstm_model, gru_model, tokenizer_dl, config_dl)
 
-
-tfidf, svm_model, label_encoder, rnn_model, tokenizer, config = load_artifacts()
+(tfidf, svm_model, label_encoder, rnn_model, tokenizer, config, lstm_model, gru_model, tokenizer_dl, config_dl) = load_artifacts()
 MAX_LEN = config["MAX_LEN"]
+MAX_LEN_DL = config_dl["MAX_LEN"]
 
 
 # =========================================================
@@ -188,7 +195,7 @@ st.markdown("""
 # Centered horizontal model switcher
 model_choice = st.radio(
     "Choose prediction model:",
-    ["ML Model (SVM)", "Deep Learning Model (RNN)"],
+    ["ML Model (SVM)", "Deep Learning (RNN)", "LSTM", "GRU"],
     index=0,
     horizontal=True,
     label_visibility="collapsed"
@@ -219,16 +226,25 @@ if analyze_clicked:
                 vec = tfidf.transform([cleaned])
                 pred_label = svm_model.predict(vec)[0]
                 sentiment = label_encoder.inverse_transform([pred_label])[0]
-
-                # LinearSVC decision function confidence proxy
                 scores = svm_model.decision_function(vec)[0]
                 exp_scores = np.exp(scores - np.max(scores))
                 probs = exp_scores / exp_scores.sum()
-
-            else:
+            elif model_choice == "Deep Learning (RNN)":
                 seq = tokenizer.texts_to_sequences([cleaned])
                 padded = pad_sequences(seq, maxlen=MAX_LEN, padding='post', truncating='post')
                 probs = rnn_model.predict(padded, verbose=0)[0]
+                pred_label = np.argmax(probs)
+                sentiment = label_encoder.inverse_transform([pred_label])[0]
+            elif model_choice == "LSTM":
+                seq = tokenizer_dl.texts_to_sequences([cleaned])
+                padded = pad_sequences(seq, maxlen=MAX_LEN_DL, padding='post', truncating='post')
+                probs = lstm_model.predict(padded, verbose=0)[0]
+                pred_label = np.argmax(probs)
+                sentiment = label_encoder.inverse_transform([pred_label])[0]
+            else:  # GRU
+                seq = tokenizer_dl.texts_to_sequences([cleaned])
+                padded = pad_sequences(seq, maxlen=MAX_LEN_DL, padding='post', truncating='post')
+                probs = gru_model.predict(padded, verbose=0)[0]
                 pred_label = np.argmax(probs)
                 sentiment = label_encoder.inverse_transform([pred_label])[0]
 
